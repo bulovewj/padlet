@@ -59,7 +59,7 @@ textarea{min-height:170px;resize:vertical}
 <body>
 <div id="app"></div>
 <div id="toast" role="status"></div>
-<input type="file" id="fi" accept=".json,application/json" hidden>
+<input type="file" id="fi" accept=".json,application/json" multiple hidden>
 <input type="file" id="fimg" accept="image/*" hidden>
 <script>
 const K='classboard.v1';
@@ -94,7 +94,7 @@ setup(){
   return `<main class="setup box" style="margin-top:6vh"><h1>${D.me?'내 정보 바꾸기':'처음 만나서 반가워요!'}</h1><p>번호와 별명만 정해요.<br>실명, 사진, 생년월일은 쓰지 않아요.</p><label for="no">내 번호</label><select id="no">${o}</select><label for="nick">내 별명 (8글자까지)</label><input id="nick" maxlength="8" value="${esc(m.nick)}" placeholder="예: 파랑고래"><div class="cf"><button class="pri" data-a="saveme">${D.me?'저장하기':'시작하기'}</button>${D.me?'<button data-a="home">취소</button>':''}</div></main>`},
 home(){
   const mine=D.boards.filter(b=>isMe(b.owner)),L=[...mine,...D.boards.filter(b=>!isMe(b.owner))];
-  return `<main><div class="bar"><h2>모든 게시판 (${L.length})</h2>${mine.length?'':'<button class="pri" data-a="newb">+ 내 게시판 만들기</button>'}</div>${L.length?'<div class="grid">'+L.map(b=>`<button class="card${isMe(b.owner)?' mine':''}" data-a="board" data-id="${esc(b.id)}" style="background:${col(b)}"><span class="em">${esc(b.emoji)}</span><b>${esc(b.name)}</b><small>${nm(b.owner)}</small><small>글 ${b.posts.length}개</small></button>`).join('')+'</div>':'<div class="empty">아직 게시판이 없어요.<br>첫 번째 게시판을 만들어 보세요!</div>'}</main>`},
+  return `<main><div class="bar"><h2>모든 게시판 (${L.length})</h2>${mine.length?'':'<button class="pri" data-a="newb">+ 내 게시판 만들기</button>'}</div>${L.length>mine.length?'':'<div class="box" style="margin-bottom:16px;background:#fff8d6"><b>친구 게시판이 안 보이나요?</b><br>이 앱은 탭마다 따로 저장돼요. 아래 순서로 파일을 주고받으면 서로 보여요.<br>① 내 게시판을 <b>보내기</b>로 친구에게 전해요.<br>② 친구가 보낸 파일을 <b>받기</b>로 열어요. (여러 개를 한꺼번에 골라도 돼요)<div class="cf"><button class="pri" data-a="exp">내 게시판 보내기</button><button data-a="imp">친구 파일 받기</button></div></div>'}${L.length?'<div class="grid">'+L.map(b=>`<button class="card${isMe(b.owner)?' mine':''}" data-a="board" data-id="${esc(b.id)}" style="background:${col(b)}"><span class="em">${esc(b.emoji)}</span><b>${esc(b.name)}</b><small>${nm(b.owner)}</small><small>글 ${b.posts.length}개</small></button>`).join('')+'</div>':'<div class="empty">아직 게시판이 없어요.<br>첫 번째 게시판을 만들어 보세요!</div>'}</main>`},
 newb(){
   const e=V.emoji||EMO[0],c=V.color||COL[0];
   return `<main><div class="box"><h1>내 게시판 만들기</h1><label for="bn">게시판 이름 (12글자까지)</label><input id="bn" maxlength="12" value="${esc(V.name||'')}" placeholder="예: 파랑고래의 그림방"><label>표지 그림</label><div class="picks">${EMO.map(x=>`<button class="${x==e?'on':''}" data-a="pickE" data-id="${x}">${x}</button>`).join('')}</div><label>표지 색</label><div class="picks">${COL.map(x=>`<button class="sw" data-a="pickC" data-id="${x}" style="background:${x};${x==c?'box-shadow:0 0 0 4px var(--acc)':''}" aria-label="색 선택">${x==c?'✔':''}</button>`).join('')}</div><div class="cf"><button class="pri" data-a="mkb">만들기</button><button data-a="home">취소</button></div></div></main>`},
@@ -135,9 +135,12 @@ delp(){if(!confirm('이 글을 지울까요?'))return;const b=board(V.id);
   if(commit(()=>{b.posts=b.posts.filter(p=>p.id!=V.pid);D.del.push(V.pid)}))go('board',{id:V.id})},
 delb(){if(!confirm('게시판과 안의 글이 모두 지워져요. 지울까요?'))return;
   if(commit(()=>{D.boards=D.boards.filter(b=>b.id!=V.id);D.del.push(V.id)}))go('home')},
-exp(){const s=JSON.stringify({v:1,boards:D.boards,del:D.del||[]}),a=document.createElement('a'),d=new Date();
-  a.href=URL.createObjectURL(new Blob([s],{type:'application/json'}));
-  a.download='학급게시판_'+D.me.no+'번_'+(d.getMonth()+1)+'월'+d.getDate()+'일.json';a.click();
+async exp(){const s=JSON.stringify({v:1,boards:D.boards,del:D.del||[]}),d=new Date(),
+  name='학급게시판_'+D.me.no+'번_'+(d.getMonth()+1)+'월'+d.getDate()+'일.json';
+  try{const f=new File([s],name,{type:'application/json'});
+    if(navigator.canShare&&navigator.canShare({files:[f]})){await navigator.share({files:[f],title:'우리반 게시판'});return}}
+  catch(e){if(e&&e.name==='AbortError')return}
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([s],{type:'application/json'}));a.download=name;a.click();
   setTimeout(()=>URL.revokeObjectURL(a.href),2000);toast('파일로 저장했어요. 친구에게 보내 주세요.')},
 imp:()=>$('#fi').click()
 };
@@ -154,12 +157,16 @@ function merge(o){
   D.boards=D.boards.filter(b=>!del.has(b.id));
   D.boards.forEach(b=>{b.posts=b.posts.filter(p=>!del.has(p.id));b.posts.forEach(p=>p.comments=p.comments.filter(c=>!del.has(c.id)))});
   return n}
-$('#fi').addEventListener('change',e=>{
-  const f=e.target.files[0];e.target.value='';if(!f)return;
-  const r=new FileReader();
-  r.onload=()=>{let o;try{o=JSON.parse(r.result);if(!o||!Array.isArray(o.boards))throw 0}catch(x){return toast('게시판 파일이 아니에요. 다시 확인해 주세요.')}
-    let n=0;if(commit(()=>{n=merge(o)})){toast(n?'새 글·댓글 '+n+'개를 가져왔어요!':'새로 가져올 내용이 없어요.');render()}};
-  r.readAsText(f)});
+$('#fi').addEventListener('change',async e=>{
+  const fs=[...e.target.files];e.target.value='';if(!fs.length)return;
+  const arr=[];let bad=0,n=0;
+  for(const f of fs){try{const o=JSON.parse(await f.text());if(!o||!Array.isArray(o.boards))throw 0;arr.push(o)}catch(x){bad++}}
+  if(!arr.length)return toast('게시판 파일이 아니에요. 다시 확인해 주세요.');
+  const before=D.boards.length;
+  if(!commit(()=>{arr.forEach(o=>{n+=merge(o)})}))return;
+  const nb=D.boards.length-before;
+  toast((nb>0?'새 게시판 '+nb+'개, ':'')+(n||nb?'새 글·댓글 '+n+'개를 가져왔어요!':'새로 가져올 내용이 없어요.')+(bad?' (열 수 없는 파일 '+bad+'개)':''));
+  render()});
 $('#fimg').addEventListener('change',e=>{
   const f=e.target.files[0];e.target.value='';if(!f)return;
   const r=new FileReader();
